@@ -33,7 +33,7 @@ export default function Navbar() {
     ,
   ] 
 
-  // Additional links (shown in More dropdown)
+
   
   const moreNavLinks = [
       { to: "/pantry", label: "Pantry" },
@@ -49,7 +49,7 @@ export default function Navbar() {
 
   const isActiveLink = (path: string) => location.pathname === path;
 
-  // Close More dropdown when clicking outside
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -97,7 +97,7 @@ export default function Navbar() {
                 className="w-10 h-10 object-contain"
               />
               <span className="text-xl font-bold text-orange-600">
-                JollofAI
+           FoodPal
               </span>
             </Link>
           </div>

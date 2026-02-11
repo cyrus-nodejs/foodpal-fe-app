@@ -1,4 +1,4 @@
-# JollofAI
+# FoodPal
 
 React + Vite + TypeScript app with TailwindCSS for AI-powered recipe generation.
 
@@ -136,14 +136,7 @@ Open http://localhost:5173 in your browser.
 }
 ```
 
-### Configuration
 
-Set `VITE_API_URL` environment variable or API defaults to `http://localhost:3000`
-"instructions": ["string"],
-"imageUrl": "string (optional)"
-}
-]
-}
 
 ```
 

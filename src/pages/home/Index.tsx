@@ -109,7 +109,7 @@ export default function Home() {
                   <div className="p-3">
                     <img
                       src={heroImage}
-                      alt="JollofAI - Traditional African cuisine made simple"
+                      alt="FoodPal - Traditional African cuisine made simple"
                       className="w-full h-64 md:h-80 object-cover rounded-xl"
                     />
                   </div>
@@ -125,7 +125,7 @@ export default function Home() {
         <div className="container-max px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Why Choose JollofAI?
+              Why Choose FoodPal?
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Experience the perfect blend of tradition and technology in your
@@ -395,7 +395,7 @@ export default function Home() {
           </h2>
           <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto">
             Join thousands of home cooks who are discovering new flavors with
-            JollofAI
+            FoodPal
           </p>
           <Link to="/recipe-generator">
             <Button
