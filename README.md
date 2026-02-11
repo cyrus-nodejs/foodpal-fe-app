@@ -105,45 +105,8 @@ Open http://localhost:5173 in your browser.
 - `GET /vendors` - Get all vendors
 - `GET /vendors/nearby` - Get nearby vendors
 
-### Response Formats
-
-**Auth Response:**
-
-```json
-{
-  "user": {
-    "id": "string",
-    "fullName": "string",
-    "email": "string"
-  },
-  "token": "string"
-}
-```
-
-**Recipe Response:**
-
-```json
-{
-  "recipes": [
-    {
-      "id": "string",
-      "title": "string",
-      "ingredients": ["string"],
-      "instructions": ["string"],
-      "imageUrl": "string (optional)"
-    }
-  ]
-}
-```
 
 
 
-```
-
-## Styling
-
-- Primary brand color: `#16A34A` (used for buttons, links, focus states)
-- Responsive design with Tailwind breakpoints
-- Green CTA buttons throughout the app
 - Clean, minimal UI with proper spacing and typography
 ```
