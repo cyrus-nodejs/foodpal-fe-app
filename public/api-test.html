@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JollofAI API Connection Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        .error {
+            border-left-color: #f44336;
+        }
+        .warning {
+            border-left-color: #ff9800;
+        }
+        button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .status-online { background-color: #4CAF50; }
+        .status-offline { background-color: #f44336; }
+        .status-unknown { background-color: #ff9800; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍛 JollofAI API Connection Test</h1>
+        
+        <div class="test-section">
+            <h3><span id="apiStatus" class="status-indicator status-unknown"></span>API Base URL</h3>
+            <p><strong>Configured URL:</strong> <span id="apiUrl">https://jollofAI.render.com/api</span></p>
+            <button onclick="testConnection()">Test Connection</button>
+            <div id="connectionResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Health Check</h3>
+            <p>Test if the API server is running and responding</p>
+            <button onclick="testHealth()">Check Health</button>
+            <div id="healthResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Authentication Test</h3>
+            <p>Test the authentication endpoints</p>
+            <button onclick="testAuth()">Test Auth</button>
+            <div id="authResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Recipes Endpoint</h3>
+            <p>Test fetching recipes from the API</p>
+            <button onclick="testRecipes()">Test Recipes</button>
+            <div id="recipesResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Ingredients Endpoint</h3>
+            <p>Test fetching ingredients from the API</p>
+            <button onclick="testIngredients()">Test Ingredients</button>
+            <div id="ingredientsResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Complete Test Suite</h3>
+            <p>Run all tests sequentially</p>
+            <button onclick="runAllTests()">Run All Tests</button>
+            <button onclick="clearResults()">Clear Results</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://jollofAI.render.com/api';
+        
+        function updateStatus(isOnline) {
+            const statusEl = document.getElementById('apiStatus');
+            statusEl.className = 'status-indicator ' + (isOnline ? 'status-online' : 'status-offline');
+        }
+
+        function showResult(elementId, content, isError = false) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.textContent = content;
+            if (isError) {
+                element.style.background = 'rgba(244, 67, 54, 0.2)';
+                element.style.border = '1px solid #f44336';
+            } else {
+                element.style.background = 'rgba(76, 175, 80, 0.2)';
+                element.style.border = '1px solid #4CAF50';
+            }
+        }
+
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.innerHTML = '<span class="loading"></span> Testing...';
+            element.style.background = 'rgba(255, 152, 0, 0.2)';
+            element.style.border = '1px solid #ff9800';
+        }
+
+        async function makeRequest(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    ...options.headers
+                }
+            });
+            
+            const responseText = await response.text();
+            let responseData;
+            try {
+                responseData = JSON.parse(responseText);
+            } catch {
+                responseData = responseText;
+            }
+            
+            return {
+                ok: response.ok,
+                status: response.status,
+                statusText: response.statusText,
+                data: responseData,
+                headers: Object.fromEntries(response.headers.entries())
+            };
+        }
+
+        async function testConnection() {
+            showLoading('connectionResult');
+            
+            try {
+                const result = await makeRequest(API_BASE_URL);
+                showResult('connectionResult', 
+                    `✅ Connection Successful!\n` +
+                    `Status: ${result.status} ${result.statusText}\n` +
+                    `Response: ${JSON.stringify(result.data, null, 2)}`
+                );
+                updateStatus(true);
+            } catch (error) {
+                showResult('connectionResult', 
+                    `❌ Connection Failed!\n` +
+                    `Error: ${error.message}\n` +
+                    `This might indicate that:\n` +
+                    `- The API server is not running\n` +
+                    `- The domain is incorrect\n` +
+                    `- There are CORS issues\n` +
+                    `- Network connectivity problems`,
+                    true
+                );
+                updateStatus(false);
+            }
+        }
+
+        async function testHealth() {
+            showLoading('healthResult');
+            
+            try {
+                const result = await makeRequest(`${API_BASE_URL}/health`);
+                showResult('healthResult', 
+                    `✅ Health Check Passed!\n` +
+                    `Status: ${result.status} ${result.statusText}\n` +
+                    `Response: ${JSON.stringify(result.data, null, 2)}`
+                );
+            } catch (error) {
+                showResult('healthResult', 
+                    `❌ Health Check Failed!\n` +
+                    `Error: ${error.message}`,
+                    true
+                );
+            }
+        }
+
+        async function testAuth() {
+            showLoading('authResult');
+            
+            try {
+                // Test registration endpoint (without actually registering)
+                const result = await makeRequest(`${API_BASE_URL}/auth/register`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'testpassword',
+                        fullName: 'Test User'
+                    })
+                });
+                
+                showResult('authResult', 
+                    `Auth Endpoint Response:\n` +
+                    `Status: ${result.status} ${result.statusText}\n` +
+                    `Response: ${JSON.stringify(result.data, null, 2)}\n\n` +
+                    `Note: This might show an error if user already exists, which is normal.`
+                );
+            } catch (error) {
+                showResult('authResult', 
+                    `❌ Auth Test Failed!\n` +
+                    `Error: ${error.message}`,
+                    true
+                );
+            }
+        }
+
+        async function testRecipes() {
+            showLoading('recipesResult');
+            
+            try {
+                const result = await makeRequest(`${API_BASE_URL}/recipes`);
+                showResult('recipesResult', 
+                    `✅ Recipes Endpoint Working!\n` +
+                    `Status: ${result.status} ${result.statusText}\n` +
+                    `Response: ${JSON.stringify(result.data, null, 2)}`
+                );
+            } catch (error) {
+                showResult('recipesResult', 
+                    `❌ Recipes Test Failed!\n` +
+                    `Error: ${error.message}`,
+                    true
+                );
+            }
+        }
+
+        async function testIngredients() {
+            showLoading('ingredientsResult');
+            
+            try {
+                const result = await makeRequest(`${API_BASE_URL}/ingredients`);
+                showResult('ingredientsResult', 
+                    `✅ Ingredients Endpoint Working!\n` +
+                    `Status: ${result.status} ${result.statusText}\n` +
+                    `Response: ${JSON.stringify(result.data, null, 2)}`
+                );
+            } catch (error) {
+                showResult('ingredientsResult', 
+                    `❌ Ingredients Test Failed!\n` +
+                    `Error: ${error.message}`,
+                    true
+                );
+            }
+        }
+
+        async function runAllTests() {
+            console.log('Running all tests...');
+            await testConnection();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testHealth();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testAuth();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testRecipes();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testIngredients();
+        }
+
+        function clearResults() {
+            const results = ['connectionResult', 'healthResult', 'authResult', 'recipesResult', 'ingredientsResult'];
+            results.forEach(id => {
+                document.getElementById(id).style.display = 'none';
+            });
+            updateStatus(false);
+        }
+
+        // Auto-test connection on page load
+        window.addEventListener('load', () => {
+            setTimeout(testConnection, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JollofAI Backend Diagnostic</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+        }
+        .success { background: rgba(76, 175, 80, 0.3); }
+        .error { background: rgba(244, 67, 54, 0.3); }
+        .warning { background: rgba(255, 152, 0, 0.3); }
+        .info { background: rgba(33, 150, 243, 0.3); }
+        button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .loading { background: linear-gradient(45deg, #ff9800, #f57c00); }
+        #results { margin-top: 20px; }
+        .endpoint-test {
+            border-left: 4px solid #2196F3;
+            margin: 5px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 JollofAI Backend Diagnostic</h1>
+        <p>This tool will help diagnose your backend API connectivity issues.</p>
+        
+        <div>
+            <button onclick="quickDiagnose()">🚀 Quick Diagnosis</button>
+            <button onclick="fullDiagnose()">🔧 Full Diagnosis</button>
+            <button onclick="clearResults()">🗑️ Clear Results</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const resultsDiv = document.getElementById('results');
+        let testResults = [];
+
+        // Possible API endpoints to test
+        const TEST_CONFIGS = [
+            {
+                name: 'Root Domain',
+                urls: [
+                    'https://jollofapi.onrender.com',
+                    'https://jollofapi.onrender.com/health',
+                    'https://jollofapi.onrender.com/status'
+                ]
+            },
+            {
+                name: 'API Prefix Routes',
+                urls: [
+                    'https://jollofapi.onrender.com/api',
+                    'https://jollofapi.onrender.com/api/health',
+                    'https://jollofapi.onrender.com/api/status',
+                    'https://jollofapi.onrender.com/api/recipes'
+                ]
+            },
+            {
+                name: 'Alternative Endpoints',
+                urls: [
+                    'https://jollofapi.onrender.com/v1/health',
+                    'https://jollofapi.onrender.com/api/v1/health',
+                    'https://jollofapi.onrender.com/ping'
+                ]
+            }
+        ];
+
+        function addResult(message, type = 'info', details = null) {
+            const result = { message, type, details, timestamp: new Date() };
+            testResults.push(result);
+            
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `
+                <strong>${result.timestamp.toLocaleTimeString()}</strong> - ${message}
+                ${details ? `<br><small>${details}</small>` : ''}
+            `;
+            resultsDiv.appendChild(div);
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        async function testEndpoint(url) {
+            const startTime = Date.now();
+            
+            try {
+                addResult(`🔍 Testing: ${url}`, 'info');
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    // Add no-cors mode as fallback for CORS issues
+                    mode: 'cors'
+                });
+                
+                const responseTime = Date.now() - startTime;
+                
+                if (response.ok) {
+                    let data;
+                    try {
+                        data = await response.text();
+                        if (data.startsWith('{') || data.startsWith('[')) {
+                            data = JSON.parse(data);
+                        }
+                    } catch (e) {
+                        // Non-JSON response
+                    }
+                    
+                    addResult(
+                        `✅ SUCCESS: ${url}`,
+                        'success',
+                        `Status: ${response.status}, Response time: ${responseTime}ms${data ? ', Data: ' + JSON.stringify(data).substring(0, 100) + '...' : ''}`
+                    );
+                    return { success: true, url, status: response.status, data, responseTime };
+                } else {
+                    addResult(
+                        `❌ HTTP ERROR: ${url}`,
+                        'error',
+                        `Status: ${response.status} ${response.statusText}, Response time: ${responseTime}ms`
+                    );
+                    return { success: false, url, status: response.status, error: response.statusText };
+                }
+                
+            } catch (error) {
+                const responseTime = Date.now() - startTime;
+                
+                if (error.name === 'TypeError' && error.message.includes('CORS')) {
+                    addResult(
+                        `🚫 CORS ERROR: ${url}`,
+                        'warning',
+                        'CORS policy blocked the request. Backend needs CORS configuration.'
+                    );
+                } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    addResult(
+                        `🔌 CONNECTION ERROR: ${url}`,
+                        'error',
+                        'Cannot connect to server. Server may be down or URL incorrect.'
+                    );
+                } else {
+                    addResult(
+                        `❌ ERROR: ${url}`,
+                        'error',
+                        `${error.message}, Response time: ${responseTime}ms`
+                    );
+                }
+                
+                return { success: false, url, error: error.message };
+            }
+        }
+
+        async function quickDiagnose() {
+            clearResults();
+            addResult('🚀 Starting Quick Diagnosis...', 'info');
+            
+            // Test the main endpoints that should work
+            const quickTests = [
+                'https://jollofapi.onrender.com',
+                'https://jollofapi.onrender.com/health',
+                'https://jollofapi.onrender.com/api',
+                'https://jollofapi.onrender.com/api/health'
+            ];
+            
+            const results = [];
+            for (const url of quickTests) {
+                const result = await testEndpoint(url);
+                results.push(result);
+                await new Promise(resolve => setTimeout(resolve, 500)); // Small delay
+            }
+            
+            const workingEndpoints = results.filter(r => r.success);
+            
+            addResult('📊 Quick Diagnosis Complete', 'info');
+            
+            if (workingEndpoints.length > 0) {
+                addResult(`✅ Found ${workingEndpoints.length} working endpoint(s)`, 'success');
+                const healthEndpoint = workingEndpoints.find(e => e.url.includes('/health'));
+                if (healthEndpoint) {
+                    const baseUrl = healthEndpoint.url.replace('/health', '');
+                    addResult(`💡 Recommended API_BASE_URL: "${baseUrl}"`, 'success');
+                }
+            } else {
+                addResult('❌ No working endpoints found', 'error');
+                addResult('🔧 Try Full Diagnosis or check if backend server is running', 'warning');
+            }
+        }
+
+        async function fullDiagnose() {
+            clearResults();
+            addResult('🔧 Starting Full Diagnosis...', 'info');
+            
+            const allResults = [];
+            
+            for (const config of TEST_CONFIGS) {
+                addResult(`📋 Testing: ${config.name}`, 'info');
+                
+                for (const url of config.urls) {
+                    const result = await testEndpoint(url);
+                    allResults.push(result);
+                    await new Promise(resolve => setTimeout(resolve, 300)); // Small delay
+                }
+            }
+            
+            // Analysis
+            const workingEndpoints = allResults.filter(r => r.success);
+            const corsErrors = allResults.filter(r => !r.success && r.error && r.error.includes('CORS'));
+            const connectionErrors = allResults.filter(r => !r.success && r.error && (r.error.includes('fetch') || r.error.includes('connect')));
+            
+            addResult('📊 Full Diagnosis Complete', 'info');
+            addResult(`✅ Working endpoints: ${workingEndpoints.length}`, workingEndpoints.length > 0 ? 'success' : 'error');
+            addResult(`🚫 CORS errors: ${corsErrors.length}`, corsErrors.length > 0 ? 'warning' : 'info');
+            addResult(`🔌 Connection errors: ${connectionErrors.length}`, connectionErrors.length > 0 ? 'error' : 'info');
+            
+            if (workingEndpoints.length > 0) {
+                addResult('💡 SOLUTION FOUND!', 'success');
+                workingEndpoints.forEach(endpoint => {
+                    addResult(`   Use: ${endpoint.url}`, 'success');
+                });
+            } else if (corsErrors.length > 0) {
+                addResult('🔧 CORS Configuration Needed', 'warning', 'Your backend needs to allow requests from your frontend domain');
+            } else {
+                addResult('🚨 Backend Server Issue', 'error', 'Server appears to be down or URL is incorrect');
+            }
+        }
+
+        function clearResults() {
+            resultsDiv.innerHTML = '';
+            testResults = [];
+        }
+
+        // Auto-start quick diagnosis when page loads
+        window.addEventListener('load', () => {
+            setTimeout(quickDiagnose, 1000);
+        });
+    </script>
+</body>
+</html>
